@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Alert Dashboard</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <style>
+        .layout-wrapper { display: flex; gap: 2rem; }
+        .main-content { flex: 1; }
+        .sidebar { width: 350px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1.5rem; }
+        
+        .feed-list { flex: 1; min-height: 400px; max-height: 600px; overflow-y: auto; background: #0F172A; border-radius: 8px; padding: 10px; border: 1px solid #334155; }
+        .feed-item { padding: 8px 12px; margin-bottom: 8px; border-radius: 6px; font-size: 0.9rem; background: #1E293B; border-left: 4px solid #475569; animation: slideIn 0.3s ease-out; }
+        .feed-item.gift { border-color: #10B981; }
+        .feed-item.follow { border-color: #8B5CF6; }
+        .feed-item.like { border-color: #EC4899; }
+        .feed-item.share { border-color: #3B82F6; }
+        .feed-item.comment { border-color: #94A3B8; }
+        .feed-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .feed-user { font-weight: bold; color: #F8FAFC; }
+        .feed-time { color: #64748B; font-size: 0.75rem; }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        
+        /* Two columns inside main */
+        .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width: 1400px;">
+        <header>
+            <h1>🎥 TikTok Live Dashboard</h1>
+            <p class="subtitle">Fase 1: Dashboard, Alerts, & Overlays</p>
+        </header>
+
+        <div class="layout-wrapper">
+            <!-- Main Content Area: Alerts & Settings -->
+            <div class="main-content">
+                <div class="settings-grid">
+                    
+                    <!-- TikTok Connection -->
+                    <section class="card" style="grid-column: 1 / -1;">
+                        <h2>📱 Dashboard Live (Koneksi)</h2>
+                        <div style="display: flex; gap: 1rem; align-items: flex-end;">
+                            <div class="form-group" style="flex:1; margin:0;">
+                                <label>Username atau URL Live TikTok</label>
+                                <input type="text" id="tiktok-username" placeholder="@username atau https://tiktok.com/@username/live">
+                            </div>
+                            <button class="btn btn-primary" onclick="connectTikTok()" style="width: 120px;">Connect</button>
+                        </div>
+                        <div id="connection-status" class="status">Menunggu koneksi...</div>
+                    </section>
+
+                    <!-- Follow Alert -->
+                    <section class="card">
+                        <h2>👤 Alert Follower Baru</h2>
+                        <div class="form-group">
+                            <label class="checkbox">
+                                <input type="checkbox" id="follow-enabled" checked> Aktifkan Alert Follow
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>Teks Alert</label>
+                            <input type="text" id="follow-text" value="{username} followed!">
+                        </div>
+                        <div class="form-group" style="display: flex; gap:1rem;">
+                            <div style="flex:1">
+                                <label>Warna Line</label>
+                                <input type="color" id="follow-color" value="#8B5CF6">
+                            </div>
+                            <div style="flex:1">
+                                <label>Durasi (detik)</label>
+                                <input type="number" id="follow-duration" value="5">
+                            </div>
+                        </div>
+                        <div class="form-group"><label>Upload Suara</label><input type="file" id="follow-sound" accept="audio/*"></div>
+                        <div class="form-group"><label>Upload Gambar/GIF</label><input type="file" id="follow-image" accept="image/*"></div>
+                        <button class="btn btn-secondary" onclick="testAlert('follow')">Test Follow Alert</button>
+                    </section>
+
+                    <!-- Gift Alert -->
+                    <section class="card">
+                        <h2>🎁 Alert Gift Masuk</h2>
+                        <div class="form-group">
+                            <label class="checkbox">
+                                <input type="checkbox" id="gift-enabled" checked> Aktifkan Alert Gift
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>Teks Alert</label>
+                            <input type="text" id="gift-text" value="{username} sent {gift_name}!">
+                        </div>
+                        <div class="form-group" style="display: flex; gap:1rem;">
+                            <div style="flex:1">
+                                <label>Warna Line</label>
+                                <input type="color" id="gift-color" value="#10B981">
+                            </div>
+                            <div style="flex:1">
+                                <label>Durasi (detik)</label>
+                                <input type="number" id="gift-duration" value="5">
+                            </div>
+                        </div>
+                        <div class="form-group"><label>Upload Suara</label><input type="file" id="gift-sound" accept="audio/*"></div>
+                        <div class="form-group"><label>Upload Gambar/GIF</label><input type="file" id="gift-image" accept="image/*"></div>
+                        <button class="btn btn-secondary" onclick="testAlert('gift')">Test Gift Alert</button>
+                    </section>
+
+                    <!-- Like Alert -->
+                    <section class="card">
+                        <h2>❤️ Alert Like</h2>
+                        <div class="form-group">
+                            <label class="checkbox">
+                                <input type="checkbox" id="like-enabled" checked> Aktifkan Alert Like
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>Teks Alert (Gunakan {count})</label>
+                            <input type="text" id="like-text" value="{username} menyukai live ini ({count}x)!">
+                        </div>
+                        <div class="form-group" style="display: flex; gap:1rem;">
+                            <div style="flex:1">
+                                <label>Min. Likes Trigger</label>
+                                <input type="number" id="like-min" value="10">
+                            </div>
+                            <div style="flex:1">
+                                <label>Durasi (detik)</label>
+                                <input type="number" id="like-duration" value="3">
+                            </div>
+                        </div>
+                        <div class="form-group"><label>Warna Line</label><input type="color" id="like-color" value="#EC4899"></div>
+                        <div class="form-group"><label>Upload Suara</label><input type="file" id="like-sound" accept="audio/*"></div>
+                        <div class="form-group"><label>Upload Gambar</label><input type="file" id="like-image" accept="image/*"></div>
+                        <button class="btn btn-secondary" onclick="testAlert('like')">Test Like Alert</button>
+                    </section>
+
+                    <!-- Share Alert -->
+                    <section class="card">
+                        <h2>↗️ Alert Share</h2>
+                        <div class="form-group">
+                            <label class="checkbox">
+                                <input type="checkbox" id="share-enabled" checked> Aktifkan Alert Share
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>Teks Alert</label>
+                            <input type="text" id="share-text" value="{username} membagikan live ini!">
+                        </div>
+                        <div class="form-group" style="display: flex; gap:1rem;">
+                            <div style="flex:1">
+                                <label>Warna Line</label>
+                                <input type="color" id="share-color" value="#3B82F6">
+                            </div>
+                            <div style="flex:1">
+                                <label>Durasi (detik)</label>
+                                <input type="number" id="share-duration" value="4">
+                            </div>
+                        </div>
+                        <div class="form-group"><label>Upload Suara</label><input type="file" id="share-sound" accept="audio/*"></div>
+                        <div class="form-group"><label>Upload Gambar</label><input type="file" id="share-image" accept="image/*"></div>
+                        <button class="btn btn-secondary" onclick="testAlert('share')">Test Share Alert</button>
+                    </section>
+
+                </div>
+            </div>
+
+            <!-- Sidebar Area: Feed & Goals -->
+            <div class="sidebar">
+                
+                <!-- Save Master Settings -->
+                <section class="card">
+                    <button class="btn btn-primary" onclick="saveSettings()" style="padding: 1rem; font-size:1.1rem; width:100%;">💾 Simpan Semua Pengaturan</button>
+                </section>
+
+                <!-- Goal Widget Settings -->
+                <section class="card">
+                    <h2>🎯 Widget Goal Live</h2>
+                    <div class="form-group">
+                        <label class="checkbox">
+                            <input type="checkbox" id="goal-enabled" checked> Aktifkan Widget Goal
+                        </label>
+                    </div>
+                    <div class="form-group"><label>Judul Goal</label><input type="text" id="goal-title" value="Gift Target"></div>
+                    <div style="display:flex; gap:1rem;">
+                        <div class="form-group" style="flex:1"><label>Saat Ini</label><input type="number" id="goal-current" value="0"></div>
+                        <div class="form-group" style="flex:1"><label>Target</label><input type="number" id="goal-target" value="1000"></div>
+                    </div>
+                </section>
+
+                <!-- OBS Links -->
+                <section class="card">
+                    <h2>🔗 Link untuk OBS Browser</h2>
+                    
+                    <label style="margin-top:10px;">Link Overlay Alert (Layar Penuh)</label>
+                    <div class="url-box" style="margin: 5px 0;">
+                        <code id="overlay-url">http://127.0.0.1:5000/overlay</code>
+                        <button class="btn btn-copy" onclick="copyURL('overlay-url')">Copy</button>
+                    </div>
+                    
+                    <label style="margin-top:15px;">Link Widget Goal (Width:400, Height:120)</label>
+                    <div class="url-box" style="margin: 5px 0;">
+                        <code id="goal-url">http://127.0.0.1:5000/goal</code>
+                        <button class="btn btn-copy" onclick="copyURL('goal-url')">Copy</button>
+                    </div>
+                </section>
+
+                <!-- Live Activity Feed -->
+                <section class="card" style="display:flex; flex-direction:column; flex:1;">
+                    <h2>💬 Feed Aktivitas Penonton</h2>
+                    <div id="live-feed" class="feed-list">
+                        <p class="text-muted" style="text-align:center; padding-top:2rem;">Belum ada aktivitas.</p>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        const uploadedFiles = { followSound:'', followImage:'', giftSound:'', giftImage:'', likeSound:'', likeImage:'', shareSound:'', shareImage:'' };
+
+        function attachUpload(id, key) {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('change', (e) => uploadFile(e.target.files[0], key));
+        }
+
+        attachUpload('follow-sound', 'followSound'); attachUpload('follow-image', 'followImage');
+        attachUpload('gift-sound', 'giftSound'); attachUpload('gift-image', 'giftImage');
+        attachUpload('like-sound', 'likeSound'); attachUpload('like-image', 'likeImage');
+        attachUpload('share-sound', 'shareSound'); attachUpload('share-image', 'shareImage');
+
+        function uploadFile(file, key) {
+            if (!file) return;
+            const formData = new FormData(); formData.append('file', file);
+            fetch('/api/upload', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.status === 'success') { uploadedFiles[key] = data.url; console.log(key, 'uploaded'); }
+                    else alert('Upload failed: ' + data.message);
+                });
+        }
+
+        fetch('/api/config').then(res => res.json()).then(config => {
+            document.getElementById('tiktok-username').value = config.tiktok_username || '';
+            
+            // Follow
+            document.getElementById('follow-enabled').checked = config.alerts.follow.enabled;
+            document.getElementById('follow-text').value = config.alerts.follow.text;
+            document.getElementById('follow-color').value = config.alerts.follow.color;
+            document.getElementById('follow-duration').value = config.alerts.follow.duration;
+            uploadedFiles.followSound = config.alerts.follow.sound || ''; uploadedFiles.followImage = config.alerts.follow.image || '';
+
+            // Gift
+            document.getElementById('gift-enabled').checked = config.alerts.gift.enabled;
+            document.getElementById('gift-text').value = config.alerts.gift.text;
+            document.getElementById('gift-color').value = config.alerts.gift.color;
+            document.getElementById('gift-duration').value = config.alerts.gift.duration;
+            uploadedFiles.giftSound = config.alerts.gift.sound || ''; uploadedFiles.giftImage = config.alerts.gift.image || '';
+
+            // Like
+            document.getElementById('like-enabled').checked = config.alerts.like?.enabled ?? true;
+            document.getElementById('like-text').value = config.alerts.like?.text || '{username} liked!';
+            document.getElementById('like-color').value = config.alerts.like?.color || '#EC4899';
+            document.getElementById('like-duration').value = config.alerts.like?.duration || 3;
+            document.getElementById('like-min').value = config.alerts.like?.min_likes || 10;
+            uploadedFiles.likeSound = config.alerts.like?.sound || ''; uploadedFiles.likeImage = config.alerts.like?.image || '';
+
+            // Share
+            document.getElementById('share-enabled').checked = config.alerts.share?.enabled ?? true;
+            document.getElementById('share-text').value = config.alerts.share?.text || '{username} shared!';
+            document.getElementById('share-color').value = config.alerts.share?.color || '#3B82F6';
+            document.getElementById('share-duration').value = config.alerts.share?.duration || 4;
+            uploadedFiles.shareSound = config.alerts.share?.sound || ''; uploadedFiles.shareImage = config.alerts.share?.image || '';
+
+            // Goal
+            document.getElementById('goal-enabled').checked = config.goal?.enabled ?? true;
+            document.getElementById('goal-title').value = config.goal?.title || 'Gift Goal';
+            document.getElementById('goal-current').value = config.goal?.current || 0;
+            document.getElementById('goal-target').value = config.goal?.target || 1000;
+        });
+
+        socket.on('connection_status', (data) => {
+            const st = document.getElementById('connection-status');
+            if (data.status === 'connected') {
+                st.textContent = `Connected to @${data.username}`;
+                st.className = 'status connected';
+            } else {
+                st.textContent = `Error: ${data.message}`;
+                st.className = 'status error';
+            }
+        });
+
+        socket.on('new_feed', (item) => {
+            const list = document.getElementById('live-feed');
+            if(list.querySelector('.text-muted')) list.innerHTML = '';
+            
+            const div = document.createElement('div');
+            div.className = `feed-item ${item.type}`;
+            div.innerHTML = `
+                <div class="feed-header">
+                    <span class="feed-user">${item.username}</span>
+                    <span class="feed-time">${item.time}</span>
+                </div>
+                <div style="color: #CBD5E1;">${item.details}</div>
+            `;
+            list.prepend(div);
+            if(list.children.length > 50) list.lastChild.remove();
+        });
+
+        function connectTikTok() {
+            const username = document.getElementById('tiktok-username').value;
+            document.getElementById('connection-status').textContent = 'Connecting...';
+            document.getElementById('connection-status').className = 'status';
+            fetch('/api/tiktok/connect', {
+                method: 'POST', headers:{'Content-Type': 'application/json'}, body: JSON.stringify({username})
+            });
+        }
+
+        function saveSettings() {
+            const config = {
+                alerts: {
+                    follow: { enabled: document.getElementById('follow-enabled').checked, text: document.getElementById('follow-text').value, color: document.getElementById('follow-color').value, duration: parseInt(document.getElementById('follow-duration').value), sound: uploadedFiles.followSound, image: uploadedFiles.followImage },
+                    gift: { enabled: document.getElementById('gift-enabled').checked, text: document.getElementById('gift-text').value, color: document.getElementById('gift-color').value, duration: parseInt(document.getElementById('gift-duration').value), sound: uploadedFiles.giftSound, image: uploadedFiles.giftImage },
+                    like: { enabled: document.getElementById('like-enabled').checked, text: document.getElementById('like-text').value, color: document.getElementById('like-color').value, duration: parseInt(document.getElementById('like-duration').value), min_likes: parseInt(document.getElementById('like-min').value), sound: uploadedFiles.likeSound, image: uploadedFiles.likeImage },
+                    share: { enabled: document.getElementById('share-enabled').checked, text: document.getElementById('share-text').value, color: document.getElementById('share-color').value, duration: parseInt(document.getElementById('share-duration').value), sound: uploadedFiles.shareSound, image: uploadedFiles.shareImage }
+                },
+                goal: {
+                    enabled: document.getElementById('goal-enabled').checked,
+                    title: document.getElementById('goal-title').value,
+                    current: parseInt(document.getElementById('goal-current').value),
+                    target: parseInt(document.getElementById('goal-target').value)
+                }
+            };
+            fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(config) })
+                .then(()=> alert('Berhasil disimpan!'));
+        }
+
+        function testAlert(type) {
+            const data = { type: type, username: 'Tester_' + Math.floor(Math.random()*100) };
+            if(type === 'gift') { data.gift_name = 'Panda'; data.gift_count = 1; }
+            if(type === 'like') { data.count = 50; }
+            fetch('/api/alerts/trigger', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        }
+
+        function copyURL(elementId) {
+            navigator.clipboard.writeText(document.getElementById(elementId).textContent).then(() => alert('Link Copied!'));
+        }
+    </script>
+</body>
+</html>

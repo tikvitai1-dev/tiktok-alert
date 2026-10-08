@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Live Goal Widget</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: transparent;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .goal-container {
+            width: 90%;
+            max-width: 500px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 20px;
+            border-radius: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            color: white;
+        }
+        .goal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .goal-title {
+            color: #F8FAFC;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .goal-numbers {
+            color: #38BDF8;
+            font-size: 1.2rem;
+        }
+        .progress-bar-bg {
+            background: rgba(255, 255, 255, 0.1);
+            height: 24px;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #8B5CF6, #EC4899);
+            height: 100%;
+            width: 0%;
+            border-radius: 12px;
+            transition: width 0.5s ease-in-out;
+        }
+        .progress-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.85rem;
+            font-weight: 800;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="goal-container">
+        <div class="goal-header">
+            <span class="goal-title">🎯 <span id="goal-title">Gift Goal</span></span>
+            <span class="goal-numbers"><span id="goal-current">0</span> / <span id="goal-target">100</span></span>
+        </div>
+        <div class="progress-bar-bg">
+            <div id="progress-fill" class="progress-bar-fill"></div>
+            <div id="progress-text" class="progress-percentage">0%</div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        
+        function updateGoal(goal) {
+            document.getElementById('goal-title').textContent = goal.title || 'Live Goal';
+            const cur = parseInt(goal.current || 0);
+            const tar = parseInt(goal.target || 100);
+            document.getElementById('goal-current').textContent = cur;
+            document.getElementById('goal-target').textContent = tar;
+            
+            const pct = Math.min(Math.round((cur / tar) * 100), 100);
+            document.getElementById('progress-fill').style.width = pct + '%';
+            document.getElementById('progress-text').textContent = pct + '%';
+        }
+
+        fetch('/api/config')
+            .then(res => res.json())
+            .then(data => {
+                if (data.goal) updateGoal(data.goal);
+            });
+
+        socket.on('goal_updated', (goal) => {
+            updateGoal(goal);
+        });
+    </script>
+</body>
+</html>

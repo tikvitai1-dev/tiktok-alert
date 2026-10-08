@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Alert Overlay</title>
+    <link rel="stylesheet" href="/static/css/overlay.css">
+</head>
+<body>
+    <div id="alert-container" class="alert-container">
+        <div id="alert-box" class="alert-box">
+            <img id="alert-image" src="" alt="Alert Image" class="alert-image">
+            <div class="alert-content">
+                <div id="alert-username" class="alert-username"></div>
+                <div id="alert-message" class="alert-message"></div>
+                <div id="alert-gift" class="alert-gift"></div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="alert-sound" preload="auto"></audio>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="/static/js/overlay.js"></script>
+</body>
+</html>
