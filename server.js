@@ -1,20 +1,26 @@
 /**
- * TikTok Alert Web - Node.js + Express Server
- * Compatible with Google Apps Script deployment
+ * TikTok Alert Web - Node.js + Express Server (ES Modules)
+ * Compatible with Railway deployment
  */
 
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-const cors = require('cors');
-const multer = require('multer');
-const fs = require('fs');
-const path = require('path');
-const { TikTokLiveConnection } = require('tiktok-live-connector');
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
+const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
@@ -72,6 +78,21 @@ let currentAlerts = [];
 let activityFeed = [];
 let activeTikTokConnection = null;
 
+// Dynamic import for tiktok-live-connector (ESM module)
+let TikTokLiveConnection = null;
+
+async function getTikTokLibrary() {
+  if (!TikTokLiveConnection) {
+    try {
+      const mod = await import('tiktok-live-connector');
+      TikTokLiveConnection = mod.WebcastPushConnection || mod.TikTokLiveConnection || mod.default;
+    } catch (e) {
+      console.error('Failed to load tiktok-live-connector:', e.message);
+    }
+  }
+  return TikTokLiveConnection;
+}
+
 // Routes
 app.get('/', (req, res) => res.render('dashboard'));
 app.get('/overlay', (req, res) => res.render('overlay'));
@@ -128,7 +149,7 @@ app.post('/api/alerts/trigger', (req, res) => {
   res.json({ status: 'success', alert: alertData });
 });
 
-app.post('/api/tiktok/connect', (req, res) => {
+app.post('/api/tiktok/connect', async (req, res) => {
   let { username } = req.body;
   if (!username) {
     return res.status(400).json({ status: 'error', message: 'Username required' });
@@ -145,21 +166,28 @@ app.post('/api/tiktok/connect', (req, res) => {
 
   config.tiktok_username = username;
   saveConfig(config);
-  startTikTokReader(username);
-
-  res.json({ status: 'success', username });
+  
+  try {
+    await startTikTokReader(username);
+    res.json({ status: 'success', username });
+  } catch (e) {
+    res.json({ status: 'error', message: e.message });
+  }
 });
 
 // TikTok Live Reader
-function startTikTokReader(username) {
+async function startTikTokReader(username) {
   if (activeTikTokConnection) {
-    activeTikTokConnection.disconnect();
+    try { activeTikTokConnection.disconnect(); } catch(e) {}
   }
 
-  const connection = new TikTokLiveConnection({
-    uniqueId: username,
-    processInitialData: false
-  });
+  const TikTokLib = await getTikTokLibrary();
+  if (!TikTokLib) {
+    io.emit('connection_status', { status: 'error', message: 'TikTok library not loaded' });
+    throw new Error('TikTok library not available');
+  }
+
+  const connection = new TikTokLib({ uniqueId: username });
 
   activeTikTokConnection = connection;
 
@@ -175,8 +203,8 @@ function startTikTokReader(username) {
   });
 
   connection.on('gift', (data) => {
-    const giftName = data.giftName || 'Gift';
-    const count = data.repeatCount || 1;
+    const giftName = data.giftName || data.gift?.name || 'Gift';
+    const count = data.repeatCount || data.giftCount || 1;
 
     const alertData = {
       type: 'gift',
@@ -258,15 +286,15 @@ function startTikTokReader(username) {
     io.emit('new_feed', activityFeed[activityFeed.length - 1]);
   });
 
-  connection.connect()
-    .then(() => {
-      io.emit('connection_status', { status: 'connected', username });
-      console.log(`✅ Connected to @${username}`);
-    })
-    .catch(err => {
-      io.emit('connection_status', { status: 'error', message: err.message });
-      console.error('Connection error:', err.message);
-    });
+  try {
+    await connection.connect();
+    io.emit('connection_status', { status: 'connected', username });
+    console.log(`✅ Connected to @${username}`);
+  } catch (err) {
+    io.emit('connection_status', { status: 'error', message: err.message });
+    console.error('Connection error:', err.message);
+    throw err;
+  }
 }
 
 // Socket.IO
